@@ -227,6 +227,55 @@
 
         /* [MODIFIKASI] PENGATURAN CETAK 1 HALAMAN / 1 LEMBAR A4 (TEKS DIPERBESAR AGAR PAS FULL) */
         @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* --- CUSTOM PRINT STYLE UNTUK RADIO (MVP) & CHECKBOX (FOULS) --- */
+            input[type="radio"], input[type="checkbox"] {
+                -webkit-appearance: none;
+                appearance: none;
+                margin: 0;
+                vertical-align: middle;
+                background-color: white;
+            }
+            
+            /* Style Radio Button MVP */
+            input[type="radio"] {
+                width: 12px;
+                height: 12px;
+                border: 1px solid #9ca3af;
+                border-radius: 50%;
+            }
+            input[type="radio"]:checked {
+                background-color: #d4af37 !important; /* Warna Gold AFKAB */
+                border: 3px solid #800000 !important; /* Warna Border Maroon */
+            }
+            
+            /* Style Checkbox Fouls / Akumulasi */
+            input[type="checkbox"] {
+                width: 11px;
+                height: 11px;
+                border: 1px solid #9ca3af;
+                border-radius: 2px;
+                position: relative;
+            }
+            input[type="checkbox"]:checked {
+                background-color: #800000 !important; /* Background Maroon */
+                border: 1px solid #800000 !important;
+            }
+            input[type="checkbox"]:checked::before {
+                content: '✔';
+                position: absolute;
+                color: white !important;
+                font-size: 8px;
+                font-weight: 900;
+                left: 1px;
+                top: -0.5px;
+            }
+            /* --------------------------------------------------------------- */
+
             .no-print { display: none !important; }
             .print-only { display: block !important; }
             body { 
@@ -265,8 +314,8 @@
 </head>
 <body class="bg-afkab-cream text-gray-800 min-h-screen flex flex-col selection:bg-afkab-gold selection:text-afkab-maroon relative bg-cover bg-center bg-fixed" style="background-image: url('bg.webp');">
 
-    <!-- Overlay Gelap Lebih Pekat & Efek Blur pada Background -->
-    <div class="absolute inset-0 bg-black/55 backdrop-blur-[4px] pointer-events-none fixed z-0"></div>
+    <!-- Overlay Gelap Lebih Pekat & Efek Blur pada Background (Ditambahkan no-print) -->
+    <div class="absolute inset-0 bg-black/55 backdrop-blur-[4px] pointer-events-none fixed z-0 no-print"></div>
 
     <!-- HEADER UTAMA & MENU NAVIGASI TERINTEGRASI -->
     <header class="bg-gradient-to-r from-afkab-darkMaroon via-afkab-maroon to-afkab-darkMaroon text-white shadow-lg sticky top-0 z-50 no-print border-b border-afkab-gold/30">
@@ -334,8 +383,8 @@
         </div>
     </header>
 
-    <!-- KONTEN UTAMA (FULL WIDTH) -->
-    <div class="max-w-full mx-auto px-6 py-6 flex-grow w-full space-y-6 relative z-10">
+    <!-- KONTEN UTAMA (FULL WIDTH) (Ditambahkan print:p-0) -->
+    <div class="max-w-full mx-auto px-6 py-6 flex-grow w-full space-y-6 relative z-10 print:p-0">
 
         <main class="space-y-6">
 
@@ -443,8 +492,8 @@
                 </div>
             </div>
 
-            <!-- TAB: REPORT / MODUL DSP -->
-            <div id="tab-dsp" class="tab-content hidden space-y-6">
+            <!-- TAB: REPORT / MODUL DSP (Ditambahkan print:space-y-0) -->
+            <div id="tab-dsp" class="tab-content hidden space-y-6 print:space-y-0">
                 <div class="bg-white/85 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 p-6 no-print space-y-4">
                     <!-- HEADER MODUL DSP & TOMBOL AKSI UTAMA DIJADIKAN SATU BARIS SEJAJAR -->
                     <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200/60 pb-4">
@@ -484,8 +533,8 @@
                     </div>
                 </div>
 
-                <!-- TAHAP 1: KONTAINER UTAMA DSP YANG DI-HIDDEN SECARA DEFAULT -->
-                <div id="dspMainContent" class="hidden space-y-6">
+                <!-- TAHAP 1: KONTAINER UTAMA DSP YANG DI-HIDDEN SECARA DEFAULT (Ditambahkan print:space-y-0) -->
+                <div id="dspMainContent" class="hidden space-y-6 print:space-y-0">
                     <!-- A4 Preview Container -->
                     <div id="dspA4Preview" class="print-a4 bg-white/95 backdrop-blur-md shadow-2xl rounded-none md:rounded-2xl border border-gray-200 p-6 space-y-3 text-gray-800 text-[10px]">
                         <div class="text-center border-b-2 border-afkab-maroon pb-2 space-y-0.5">
@@ -1182,7 +1231,7 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyXIW_c7AVziL3cUluRwx5dom9lTyyfWzCbckFm1HW_minp6960Mz6n_Dq_FUrSLLBd/exec"; 
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby1CkdkRy9DrprbXffKlt9EXI0Us876uLDUWgpXc6T2qOuBjxt2etS15xeFs9cxbBDd/exec"; 
 
         let currentUserRole = 'Admin'; 
         let currentDashboardVenue = 'V01'; 
@@ -2797,7 +2846,10 @@
             const match = appData.matches.find(m => m.id === matchId);
             if(!match) return;
 
-            const isLocked = (match.status === 'Verified');
+            // Status 'Verified' mengunci roster pemain/official (screening).
+            // Input skor, kartu, goal, MVP, & fouls tetap DIBUKA untuk Operator (Opps-1/2) & Admin.
+            // Input hanya terkunci secara permanen jika status sudah 'Completed & Saved'.
+            const isLocked = (match.status === 'Completed & Saved');
 
             const homeTeam = appData.teams.find(t => t.id === match.homeTeamId) || { name: 'Home' };
             const awayTeam = appData.teams.find(t => t.id === match.awayTeamId) || { name: 'Away' };
@@ -2832,7 +2884,8 @@
             });
 
             const saveBtn = document.getElementById('saveDspBtn');
-            if(saveBtn) saveBtn.style.display = (currentUserRole === 'Admin' && !isLocked) ? 'block' : 'none';
+            // [MODIFIKASI] Menampilkan tombol simpan untuk semua role (termasuk Opps) selama match belum di-lock
+            if(saveBtn) saveBtn.style.display = (!isLocked) ? 'flex' : 'none';
 
             calculateTotalScore();
             renderDSPOfficialsSection(match, homeTeam.name, awayTeam.name);
@@ -3118,7 +3171,11 @@
             });
 
             match.lineup = JSON.stringify(lineup);
-            match.status = 'DSP Submitted';
+            
+            // Pertahankan status 'Verified' atau 'Published' jika sudah terverifikasi/dipublish
+            if (!match.status || match.status === 'DSP Open' || match.status === 'Draft') {
+                match.status = 'DSP Submitted';
+            }
 
             try {
                 showToast('Menyimpan...', 'Mengirim data BAP & skor ke Google Sheets...', 'success');
