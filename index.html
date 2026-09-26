@@ -706,24 +706,34 @@
                         </div>
 
                         <div class="space-y-1">
-                            <p class="font-bold uppercase tracking-wider text-gray-700 bg-gray-100 px-1.5 py-0.5 border-l-4 border-afkab-maroon text-[9.5px]">4. Akumulasi Pelanggaran (Fouls per Babak)</p>
+                            <p class="font-bold uppercase tracking-wider text-gray-700 bg-gray-100 px-1.5 py-0.5 border-l-4 border-afkab-maroon text-[9.5px]">4. Time Out & Akumulasi Pelanggaran</p>
                             <table class="w-full border border-gray-400 text-center text-[9px]">
                                 <thead>
                                     <tr class="bg-gray-50">
-                                        <th class="border border-gray-400 p-1 w-1/4">Tim / Babak</th>
-                                        <th class="border border-gray-400 p-1">Akumulasi Foul Babak I (1 - 6)</th>
-                                        <th class="border border-gray-400 p-1">Akumulasi Foul Babak II (1 - 6)</th>
+                                        <th class="border border-gray-400 p-1 w-1/4" rowspan="2">Tim / Babak</th>
+                                        <th class="border border-gray-400 p-1" colspan="2">Babak I</th>
+                                        <th class="border border-gray-400 p-1" colspan="2">Babak II</th>
+                                    </tr>
+                                    <tr class="bg-gray-50">
+                                        <th class="border border-gray-400 p-1 w-12 text-blue-700">Time Out</th>
+                                        <th class="border border-gray-400 p-1">Foul (1 - 6)</th>
+                                        <th class="border border-gray-400 p-1 w-12 text-blue-700">Time Out</th>
+                                        <th class="border border-gray-400 p-1">Foul (1 - 6)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td class="border border-gray-400 p-1 font-bold" id="foulHomeNameLabel">Home Team</td>
+                                        <td class="border border-gray-400 p-1 font-bold text-left" id="foulHomeNameLabel">Home Team</td>
+                                        <td class="border border-gray-400 p-1"><input type="checkbox" id="toHomeH1" class="rounded scale-110 cursor-pointer"></td>
                                         <td class="border border-gray-400 p-1"><div class="flex justify-center space-x-1" id="homeH1Fouls"></div></td>
+                                        <td class="border border-gray-400 p-1"><input type="checkbox" id="toHomeH2" class="rounded scale-110 cursor-pointer"></td>
                                         <td class="border border-gray-400 p-1"><div class="flex justify-center space-x-1" id="homeH2Fouls"></div></td>
                                     </tr>
                                     <tr>
-                                        <td class="border border-gray-400 p-1 font-bold" id="foulAwayNameLabel">Away Team</td>
+                                        <td class="border border-gray-400 p-1 font-bold text-left" id="foulAwayNameLabel">Away Team</td>
+                                        <td class="border border-gray-400 p-1"><input type="checkbox" id="toAwayH1" class="rounded scale-110 cursor-pointer"></td>
                                         <td class="border border-gray-400 p-1"><div class="flex justify-center space-x-1" id="awayH1Fouls"></div></td>
+                                        <td class="border border-gray-400 p-1"><input type="checkbox" id="toAwayH2" class="rounded scale-110 cursor-pointer"></td>
                                         <td class="border border-gray-400 p-1"><div class="flex justify-center space-x-1" id="awayH2Fouls"></div></td>
                                     </tr>
                                 </tbody>
@@ -3090,6 +3100,22 @@
                         </label>`;
                 }
             });
+
+            // Terapkan status Time Out dan atur status disabled jika match sudah dikunci
+            const toIds = {
+                'toHomeH1': foulsState.timeOut?.homeH1 || false,
+                'toHomeH2': foulsState.timeOut?.homeH2 || false,
+                'toAwayH1': foulsState.timeOut?.awayH1 || false,
+                'toAwayH2': foulsState.timeOut?.awayH2 || false
+            };
+
+            Object.keys(toIds).forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    el.checked = toIds[id];
+                    el.disabled = isLocked;
+                }
+            });
         }
 
         // [PERBAIKAN] Fungsi saveDSPState yang diperbarui agar menyertakan foulsData, homeJersey, & awayJersey secara lengkap ke payload
@@ -3115,7 +3141,13 @@
                 homeH1: getCheckedFouls('fouls-chk-homeH1'),
                 homeH2: getCheckedFouls('fouls-chk-homeH2'),
                 awayH1: getCheckedFouls('fouls-chk-awayH1'),
-                awayH2: getCheckedFouls('fouls-chk-awayH2')
+                awayH2: getCheckedFouls('fouls-chk-awayH2'),
+                timeOut: {
+                    homeH1: document.getElementById('toHomeH1')?.checked || false,
+                    homeH2: document.getElementById('toHomeH2')?.checked || false,
+                    awayH1: document.getElementById('toAwayH1')?.checked || false,
+                    awayH2: document.getElementById('toAwayH2')?.checked || false
+                }
             });
 
             match.homeJersey = document.getElementById('jerseyHomeVal').innerText;
