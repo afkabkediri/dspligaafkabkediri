@@ -825,7 +825,7 @@
                     </div>
 
                     <div class="space-y-1">
-                        <label class="block text-[10px] font-extrabold text-gray-800"><i class="fa-solid fa-users text-afkab-gold mr-1"></i> Pilih Pemain (Min 8, Maks 14 | U-19 Maks 3)</label>
+                        <label class="block text-[10px] font-extrabold text-gray-800"><i class="fa-solid fa-users text-afkab-gold mr-1"></i> Pilih Pemain (Min 3, Maks 14 | U-19 Maks 3)</label>
                         <div id="scrHomePlayers" class="bg-gray-50/80 border border-gray-200 rounded-xl p-2.5"></div>
                     </div>
                 </div>
@@ -858,7 +858,7 @@
                     </div>
 
                     <div class="space-y-1">
-                        <label class="block text-[10px] font-extrabold text-gray-800"><i class="fa-solid fa-users text-blue-800 mr-1"></i> Pilih Pemain (Min 8, Maks 14 | U-19 Maks 3)</label>
+                        <label class="block text-[10px] font-extrabold text-gray-800"><i class="fa-solid fa-users text-blue-800 mr-1"></i> Pilih Pemain (Min 3, Maks 14 | U-19 Maks 3)</label>
                         <div id="scrAwayPlayers" class="bg-gray-50/80 border border-gray-200 rounded-xl p-2.5"></div>
                     </div>
                 </div>
@@ -2777,7 +2777,7 @@
             const countLabel = document.getElementById(`scr${side.charAt(0).toUpperCase() + side.slice(1)}Count`);
             if(countLabel) {
                 countLabel.innerText = `${total}/14 (U19: ${u19Count}/3)`;
-                if(total >= 8 && total <= 14) {
+                if(total >= 3 && total <= 14) {
                     countLabel.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shadow-2xs";
                 } else {
                     countLabel.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 shadow-2xs";
@@ -2805,8 +2805,8 @@
             const homePlys = document.querySelectorAll('.scr-home-ply-chk:checked');
             const awayPlys = document.querySelectorAll('.scr-away-ply-chk:checked');
             
-            if(homePlys.length < 8 || homePlys.length > 14) return showToast('Validasi Gagal', 'Jumlah pemain Home di DSP harus antara 8 hingga 14 pemain!', 'error');
-            if(awayPlys.length < 8 || awayPlys.length > 14) return showToast('Validasi Gagal', 'Jumlah pemain Away di DSP harus antara 8 hingga 14 pemain!', 'error');
+            if(homePlys.length < 3 || homePlys.length > 14) return showToast('Validasi Gagal', 'Jumlah pemain Home di DSP harus antara 8 hingga 14 pemain!', 'error');
+            if(awayPlys.length < 3 || awayPlys.length > 14) return showToast('Validasi Gagal', 'Jumlah pemain Away di DSP harus antara 8 hingga 14 pemain!', 'error');
 
             const match = appData.matches.find(m => m.id === selectedDspMatchId);
             if(!match) return;
