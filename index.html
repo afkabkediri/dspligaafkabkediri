@@ -424,9 +424,19 @@
                             Matchday Status Hari Ini
                         </h3>
                         
-                        <!-- TAB VENUE DINAMIS BERDASARKAN DATABASE SHEET -->
-                        <div id="dashboardVenueTabsContainer" class="flex items-center space-x-1 bg-gray-200/60 p-1 rounded-xl border border-gray-300/50 backdrop-blur-sm overflow-x-auto">
-                            <!-- Dirender secara otomatis via JavaScript dari appData.venues -->
+                        <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <!-- [MODIFIKASI] Tambahan Input Pencarian -->
+                            <div class="relative w-full sm:w-48">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                    <i class="fa-solid fa-magnifying-glass text-gray-400 text-xs"></i>
+                                </div>
+                                <input type="text" id="dashboardSearch" oninput="renderDashboardMatches()" placeholder="Cari Tim / No Match..." class="bg-white/80 border border-gray-300 text-gray-800 text-xs rounded-xl focus:ring-afkab-maroon focus:border-afkab-maroon block w-full pl-8 p-1.5 shadow-sm outline-none transition-all">
+                            </div>
+
+                            <!-- TAB VENUE DINAMIS BERDASARKAN DATABASE SHEET -->
+                            <div id="dashboardVenueTabsContainer" class="flex items-center space-x-1 bg-gray-200/60 p-1 rounded-xl border border-gray-300/50 backdrop-blur-sm overflow-x-auto">
+                                <!-- Dirender secara otomatis via JavaScript dari appData.venues -->
+                            </div>
                         </div>
                     </div>
 
@@ -1692,15 +1702,35 @@
             }
         }
 
+        // [MODIFIKASI] Fungsi renderDashboardMatches yang diperbarui untuk mendukung pencarian real-time
         function renderDashboardMatches() {
             const container = document.getElementById('dashboardMatchList');
             if(!container) return;
             container.innerHTML = '';
             
-            const matchesToRender = appData.matches.filter(m => m.venueId === currentDashboardVenue);
+            const searchInput = document.getElementById('dashboardSearch');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            
+            const matchesToRender = appData.matches.filter(m => {
+                const isVenueMatch = m.venueId === currentDashboardVenue;
+                if (!isVenueMatch) return false;
+
+                if (!searchTerm) return true; 
+
+                const home = appData.teams.find(t => t.id === m.homeTeamId) || { name: 'Home' };
+                const away = appData.teams.find(t => t.id === m.awayTeamId) || { name: 'Away' };
+                
+                return (m.matchNo || '').toLowerCase().includes(searchTerm) || 
+                       (home.name || '').toLowerCase().includes(searchTerm) || 
+                       (away.name || '').toLowerCase().includes(searchTerm);
+            });
             
             if(matchesToRender.length === 0) {
-                container.innerHTML = `<p class="text-xs text-gray-400 italic py-4 text-center">Tidak ada jadwal pertandingan untuk venue ini.</p>`;
+                if (searchTerm) {
+                    container.innerHTML = `<p class="text-xs text-gray-400 italic py-4 text-center">Tidak ditemukan jadwal untuk pencarian "${searchTerm}".</p>`;
+                } else {
+                    container.innerHTML = `<p class="text-xs text-gray-400 italic py-4 text-center">Tidak ada jadwal pertandingan untuk venue ini.</p>`;
+                }
                 return;
             }
 
@@ -3054,9 +3084,18 @@
                 const existing = (parsedLineup.home || []).find(x => x.playerId === p.id) || { yellow: 0, red: 0, goals: 0 };
                 const isMvp = (match.mvpPlayerId === p.id);
                 
+                // LOGIKA TAMBAHAN PENANDA U-19
+                const isU19 = String(p.kategori || '').toUpperCase().includes('U-19');
+                const u19Badge = isU19 ? '<span class="bg-afkab-gold text-afkab-maroon px-1 py-0.5 rounded text-[7px] font-black ml-1 shadow-xs border border-afkab-maroon/30">U-19</span>' : '';
+                
                 homeHtml += `<tr>
                     <td class="border border-gray-400 p-0.5 text-center font-bold">${p.jerseyNo}</td>
-                    <td class="border border-gray-400 p-0.5 font-semibold truncate max-w-[120px]">${p.nama}</td>
+                    <td class="border border-gray-400 p-0.5 align-middle">
+                        <div class="font-semibold flex items-center justify-between w-full">
+                            <span class="truncate max-w-[100px]" title="${p.nama}">${p.nama}</span>
+                            ${u19Badge}
+                        </div>
+                    </td>
                     <td class="border border-gray-400 p-0.5 text-center"><input type="number" min="0" max="2" value="${existing.yellow || 0}" ${disabledAttr} class="w-full text-center bg-transparent border-0 outline-none font-bold home-y-inp text-[8.5px]" data-pid="${p.id}"></td>
                     <td class="border border-gray-400 p-0.5 text-center"><input type="number" min="0" max="1" value="${existing.red || 0}" ${disabledAttr} class="w-full text-center bg-transparent border-0 outline-none font-bold home-r-inp text-[8.5px]" data-pid="${p.id}"></td>
                     <td class="border border-gray-400 p-0.5 text-center"><input type="number" min="0" value="${existing.goals || 0}" ${disabledAttr} class="w-full text-center bg-transparent border-0 outline-none font-bold home-g-inp text-[8.5px]" data-pid="${p.id}"></td>
@@ -3072,9 +3111,18 @@
                 const existing = (parsedLineup.away || []).find(x => x.playerId === p.id) || { yellow: 0, red: 0, goals: 0 };
                 const isMvp = (match.mvpPlayerId === p.id);
                 
+                // LOGIKA TAMBAHAN PENANDA U-19
+                const isU19 = String(p.kategori || '').toUpperCase().includes('U-19');
+                const u19Badge = isU19 ? '<span class="bg-afkab-gold text-afkab-maroon px-1 py-0.5 rounded text-[7px] font-black ml-1 shadow-xs border border-afkab-maroon/30">U-19</span>' : '';
+                
                 awayHtml += `<tr>
                     <td class="border border-gray-400 p-0.5 text-center font-bold">${p.jerseyNo}</td>
-                    <td class="border border-gray-400 p-0.5 font-semibold truncate max-w-[120px]">${p.nama}</td>
+                    <td class="border border-gray-400 p-0.5 align-middle">
+                        <div class="font-semibold flex items-center justify-between w-full">
+                            <span class="truncate max-w-[100px]" title="${p.nama}">${p.nama}</span>
+                            ${u19Badge}
+                        </div>
+                    </td>
                     <td class="border border-gray-400 p-0.5 text-center"><input type="number" min="0" max="2" value="${existing.yellow || 0}" ${disabledAttr} class="w-full text-center bg-transparent border-0 outline-none font-bold away-y-inp text-[8.5px]" data-pid="${p.id}"></td>
                     <td class="border border-gray-400 p-0.5 text-center"><input type="number" min="0" max="1" value="${existing.red || 0}" ${disabledAttr} class="w-full text-center bg-transparent border-0 outline-none font-bold away-r-inp text-[8.5px]" data-pid="${p.id}"></td>
                     <td class="border border-gray-400 p-0.5 text-center"><input type="number" min="0" value="${existing.goals || 0}" ${disabledAttr} class="w-full text-center bg-transparent border-0 outline-none font-bold away-g-inp text-[8.5px]" data-pid="${p.id}"></td>
@@ -3281,6 +3329,26 @@
                 });
                 refreshAllUI();
                 showToast('Berhasil', 'DSP Berhasil Dipublish! Operator Lapangan kini dapat mengisi data.', 'success');
+
+                // ==========================================
+                // MODIFIKASI: OTOMATIS KELUAR KEMBALI KE DASHBOARD
+                // ==========================================
+                selectedDspMatchId = ''; // Reset ID pertandingan aktif
+                
+                const dspContent = document.getElementById('dspMainContent');
+                if (dspContent) {
+                    dspContent.classList.add('hidden'); // Sembunyikan form DSP
+                }
+                
+                const dspFormConfig = document.getElementById('dspFormConfig');
+                if (dspFormConfig) {
+                    dspFormConfig.classList.add('hidden'); // Sembunyikan tombol aksi atas
+                }
+
+                // Pindah otomatis ke tab Home / Dashboard
+                changeTab('dashboard');
+                // ==========================================
+
             } catch(e) {
                 showToast('Gagal', 'Terjadi kesalahan saat mempublish.', 'error');
             }
