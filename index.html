@@ -1241,7 +1241,7 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby1CkdkRy9DrprbXffKlt9EXI0Us876uLDUWgpXc6T2qOuBjxt2etS15xeFs9cxbBDd/exec"; 
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyIFsEjlu27hZqYT5KpYKlQceoGs0TlsNWIY4L3qod_llk3p4sgVG3iridYUBSLsN_K/exec"; 
 
         let currentUserRole = 'Admin'; 
         let currentDashboardVenue = 'V01'; 
@@ -1316,14 +1316,18 @@
         async function loadAllDataFromSheet() {
             try {
                 showToast('Memuat...', 'Mengambil data dari Google Sheets...', 'success');
+                
+                // Tambahkan timestamp untuk mencegah browser menggunakan Cache lama
+                const ts = new Date().getTime(); 
+                
                 let [resTeams, resOff, resPlay, resVenues, resMatches, resJerseys, resArchive] = await Promise.all([
-                    fetch(SCRIPT_URL + "?action=teams").then(res => res.json()).catch(() => []),
-                    fetch(SCRIPT_URL + "?action=officials").then(res => res.json()).catch(() => []),
-                    fetch(SCRIPT_URL + "?action=players").then(res => res.json()).catch(() => []),
-                    fetch(SCRIPT_URL + "?action=venues").then(res => res.json()).catch(() => []),
-                    fetch(SCRIPT_URL).then(res => res.json()).catch(() => []),
-                    fetch(SCRIPT_URL + "?action=jerseys").then(res => res.json()).catch(() => []),
-                    fetch(SCRIPT_URL + "?action=archive").then(res => res.json()).catch(() => [])
+                    fetch(SCRIPT_URL + "?action=teams&t=" + ts).then(res => res.json()).catch(() => []),
+                    fetch(SCRIPT_URL + "?action=officials&t=" + ts).then(res => res.json()).catch(() => []),
+                    fetch(SCRIPT_URL + "?action=players&t=" + ts).then(res => res.json()).catch(() => []),
+                    fetch(SCRIPT_URL + "?action=venues&t=" + ts).then(res => res.json()).catch(() => []),
+                    fetch(SCRIPT_URL + "?t=" + ts).then(res => res.json()).catch(() => []),
+                    fetch(SCRIPT_URL + "?action=jerseys&t=" + ts).then(res => res.json()).catch(() => []),
+                    fetch(SCRIPT_URL + "?action=archive&t=" + ts).then(res => res.json()).catch(() => [])
                 ]);
 
                 if (resTeams && resTeams.length > 0) appData.teams = resTeams;
@@ -3011,13 +3015,30 @@
             let homePlayers = appData.players.filter(p => String(p.teamId).trim() === String(homeTeamId).trim());
             let awayPlayers = appData.players.filter(p => String(p.teamId).trim() === String(awayTeamId).trim());
             
-            if(match.screeningData) {
-                let scr = typeof match.screeningData === 'string' ? JSON.parse(match.screeningData) : match.screeningData;
-                if(scr.homePlayers && scr.awayPlayers) {
-                    homePlayers = homePlayers.filter(p => scr.homePlayers.includes(p.id));
-                    awayPlayers = awayPlayers.filter(p => scr.awayPlayers.includes(p.id));
+            if (match.screeningData) {
+                try {
+                    let scr = typeof match.screeningData === 'string' ? JSON.parse(match.screeningData) : match.screeningData;
+                    
+                    // Perbaikan 1: Gunakan mapping dan .trim() untuk memastikan ID tercocokkan dengan akurat
+                    if (scr.homePlayers && Array.isArray(scr.homePlayers)) {
+                        homePlayers = scr.homePlayers
+                            .map(id => homePlayers.find(p => String(p.id).trim() === String(id).trim()))
+                            .filter(p => p !== undefined); // Cegah error jika ID pemain terhapus dari master
+                    }
+                    
+                    if (scr.awayPlayers && Array.isArray(scr.awayPlayers)) {
+                        awayPlayers = scr.awayPlayers
+                            .map(id => awayPlayers.find(p => String(p.id).trim() === String(id).trim()))
+                            .filter(p => p !== undefined);
+                    }
+                } catch (error) {
+                    console.error("Gagal mem-parsing screeningData:", error);
                 }
             }
+
+            // Perbaikan 2: Mengurutkan pemain berdasarkan Nomor Punggung (Jersey) agar DSP rapi dan sesuai standar
+            homePlayers.sort((a, b) => parseInt(a.jerseyNo || 0) - parseInt(b.jerseyNo || 0));
+            awayPlayers.sort((a, b) => parseInt(a.jerseyNo || 0) - parseInt(b.jerseyNo || 0));
 
             let parsedLineup = { home: [], away: [] };
             if (match.lineup) {
