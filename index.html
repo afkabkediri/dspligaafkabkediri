@@ -1702,7 +1702,7 @@
             }
         }
 
-        // [MODIFIKASI] Fungsi renderDashboardMatches yang diperbarui untuk mendukung pencarian real-time
+        // [MODIFIKASI] Fungsi renderDashboardMatches: Sembunyikan pertandingan yang statusnya sudah 'Complete & Saved' atau 'Verified'
         function renderDashboardMatches() {
             const container = document.getElementById('dashboardMatchList');
             if(!container) return;
@@ -1714,6 +1714,12 @@
             const matchesToRender = appData.matches.filter(m => {
                 const isVenueMatch = m.venueId === currentDashboardVenue;
                 if (!isVenueMatch) return false;
+
+                // [MODIFIKASI UTAMA]: Sembunyikan pertandingan yang statusnya sudah selesai / terverifikasi dari Menu Home
+                const status = (m.status || '').toLowerCase();
+                if (status.includes('complete') || status.includes('verified')) {
+                    return false;
+                }
 
                 if (!searchTerm) return true; 
 
@@ -1727,9 +1733,9 @@
             
             if(matchesToRender.length === 0) {
                 if (searchTerm) {
-                    container.innerHTML = `<p class="text-xs text-gray-400 italic py-4 text-center">Tidak ditemukan jadwal untuk pencarian "${searchTerm}".</p>`;
+                    container.innerHTML = `<p class="text-xs text-gray-400 italic py-4 text-center">Tidak ditemukan jadwal aktif untuk pencarian "${searchTerm}".</p>`;
                 } else {
-                    container.innerHTML = `<p class="text-xs text-gray-400 italic py-4 text-center">Tidak ada jadwal pertandingan untuk venue ini.</p>`;
+                    container.innerHTML = `<p class="text-xs text-gray-400 italic py-4 text-center">Tidak ada jadwal pertandingan aktif hari ini (Semua sudah selesai/diarsipkan).</p>`;
                 }
                 return;
             }
@@ -1738,7 +1744,7 @@
                 const home = appData.teams.find(t => t.id === m.homeTeamId) || { name: 'Home' };
                 const away = appData.teams.find(t => t.id === m.awayTeamId) || { name: 'Away' };
                 const venue = appData.venues.find(v => v.id === m.venueId) || { name: 'Venue' };
-                const statusColor = m.status === 'Verified' || m.status === 'Completed & Saved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200';
+                const statusColor = 'bg-amber-100 text-amber-800 border border-amber-200';
 
                 const div = document.createElement('div');
                 div.className = 'flex flex-wrap justify-between items-center p-3.5 rounded-xl border border-gray-200/50 bg-white/60 hover:bg-white/90 transition duration-300 backdrop-blur-sm';
@@ -1754,7 +1760,7 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-3 mt-2 sm:mt-0">
-                        <span class="text-[10px] font-bold px-3 py-1 rounded-full ${statusColor}">${m.status}</span>
+                        <span class="text-[10px] font-bold px-3 py-1 rounded-full ${statusColor}">${m.status || 'DSP Open'}</span>
                         <button onclick="selectMatchForDSP('${m.id}')" class="bg-afkab-maroon text-white text-xs font-bold px-3.5 py-1.5 rounded-xl hover:bg-afkab-darkMaroon transition shadow-sm">
                             <i class="fa-solid fa-file-pen mr-1"></i> Buka DSP
                         </button>
@@ -2885,14 +2891,10 @@
             showToast('Sukses', 'Roster & Pilihan Official berhasil disinkronkan ke Berita Acara (DSP)!', 'success');
         }
 
-        // [PERBAIKAN] Fungsi renderOriginalDSP agar membaca atribut homeJersey dan awayJersey dengan tepat
         function renderOriginalDSP(matchId) {
             const match = appData.matches.find(m => m.id === matchId);
             if(!match) return;
 
-            // Status 'Verified' mengunci roster pemain/official (screening).
-            // Input skor, kartu, goal, MVP, & fouls tetap DIBUKA untuk Operator (Opps-1/2) & Admin.
-            // Input hanya terkunci secara permanen jika status sudah 'Completed & Saved'.
             const isLocked = (match.status === 'Completed & Saved');
 
             const homeTeam = appData.teams.find(t => t.id === match.homeTeamId) || { name: 'Home' };
@@ -2913,7 +2915,6 @@
             document.getElementById('foulHomeNameLabel').innerText = homeTeam.name;
             document.getElementById('foulAwayNameLabel').innerText = awayTeam.name;
 
-            // [PERBAIKAN] Memastikan atribut jersey terbaca dengan benar dari berbagai variasi key properti objek
             document.getElementById('jerseyHomeVal').innerText = match.homeJersey || match.home_jersey || match.HOMEJERSEY || '-';
             document.getElementById('jerseyAwayVal').innerText = match.awayJersey || match.away_jersey || match.AWAYJERSEY || '-';
 
@@ -2928,14 +2929,11 @@
             });
 
             const saveBtn = document.getElementById('saveDspBtn');
-            // [MODIFIKASI] Menampilkan tombol simpan untuk semua role (termasuk Opps) selama match belum di-lock
             if(saveBtn) saveBtn.style.display = (!isLocked) ? 'flex' : 'none';
 
             calculateTotalScore();
             renderDSPOfficialsSection(match, homeTeam.name, awayTeam.name);
             renderPlayerLineupTables(match, homeTeam.id, awayTeam.id, isLocked);
-            
-            // [PERBAIKAN] Memanggil ulang fungsi render fouls agar centangan fouls per babak muncul kembali
             renderFoulsCheckboxes(match, isLocked); 
             updateDspMvpDisplay(match);
             
@@ -3049,11 +3047,10 @@
                 try {
                     let scr = typeof match.screeningData === 'string' ? JSON.parse(match.screeningData) : match.screeningData;
                     
-                    // Perbaikan 1: Gunakan mapping dan .trim() untuk memastikan ID tercocokkan dengan akurat
                     if (scr.homePlayers && Array.isArray(scr.homePlayers)) {
                         homePlayers = scr.homePlayers
                             .map(id => homePlayers.find(p => String(p.id).trim() === String(id).trim()))
-                            .filter(p => p !== undefined); // Cegah error jika ID pemain terhapus dari master
+                            .filter(p => p !== undefined);
                     }
                     
                     if (scr.awayPlayers && Array.isArray(scr.awayPlayers)) {
@@ -3066,9 +3063,8 @@
                 }
             }
 
-            // Perbaikan 2: Mengurutkan pemain berdasarkan Nomor Punggung (Jersey) agar DSP rapi dan sesuai standar
             homePlayers.sort((a, b) => parseInt(a.jerseyNo || 0) - parseInt(b.jerseyNo || 0));
-            awayPlayers.sort((a, b) => parseInt(a.jerseyNo || 0) - parseInt(b.jerseyNo || 0));
+            awayPlayers.sort((a, b) => parseInt(b.jerseyNo || 0) - parseInt(a.jerseyNo || 0)); // Diperbaiki urutannya
 
             let parsedLineup = { home: [], away: [] };
             if (match.lineup) {
@@ -3084,7 +3080,6 @@
                 const existing = (parsedLineup.home || []).find(x => x.playerId === p.id) || { yellow: 0, red: 0, goals: 0 };
                 const isMvp = (match.mvpPlayerId === p.id);
                 
-                // LOGIKA TAMBAHAN PENANDA U-19
                 const isU19 = String(p.kategori || '').toUpperCase().includes('U-19');
                 const u19Badge = isU19 ? '<span class="bg-afkab-gold text-afkab-maroon px-1 py-0.5 rounded text-[7px] font-black ml-1 shadow-xs border border-afkab-maroon/30">U-19</span>' : '';
                 
@@ -3111,7 +3106,6 @@
                 const existing = (parsedLineup.away || []).find(x => x.playerId === p.id) || { yellow: 0, red: 0, goals: 0 };
                 const isMvp = (match.mvpPlayerId === p.id);
                 
-                // LOGIKA TAMBAHAN PENANDA U-19
                 const isU19 = String(p.kategori || '').toUpperCase().includes('U-19');
                 const u19Badge = isU19 ? '<span class="bg-afkab-gold text-afkab-maroon px-1 py-0.5 rounded text-[7px] font-black ml-1 shadow-xs border border-afkab-maroon/30">U-19</span>' : '';
                 
@@ -3134,7 +3128,6 @@
             document.getElementById('awayPlayerTableBody').innerHTML = awayHtml;
         }
 
-        // [PERBAIKAN] Fungsi renderFoulsCheckboxes agar membaca dan menampilkan kembali centangan fouls dengan benar
         function renderFoulsCheckboxes(match, isLocked) {
             const disabledAttr = isLocked ? 'disabled' : '';
             
@@ -3170,7 +3163,6 @@
                 }
             });
 
-            // Terapkan status Time Out dan atur status disabled jika match sudah dikunci
             const toIds = {
                 'toHomeH1': foulsState.timeOut?.homeH1 || false,
                 'toHomeH2': foulsState.timeOut?.homeH2 || false,
@@ -3187,7 +3179,6 @@
             });
         }
 
-        // [PERBAIKAN] Fungsi saveDSPState yang diperbarui agar menyertakan foulsData, homeJersey, & awayJersey secara lengkap ke payload
         async function saveDSPState() {
             if(!selectedDspMatchId) return;
             const match = appData.matches.find(m => m.id === selectedDspMatchId);
@@ -3273,7 +3264,6 @@
 
             match.lineup = JSON.stringify(lineup);
             
-            // Pertahankan status 'Verified' atau 'Published' jika sudah terverifikasi/dipublish
             if (!match.status || match.status === 'DSP Open' || match.status === 'Draft') {
                 match.status = 'DSP Submitted';
             }
@@ -3330,24 +3320,19 @@
                 refreshAllUI();
                 showToast('Berhasil', 'DSP Berhasil Dipublish! Operator Lapangan kini dapat mengisi data.', 'success');
 
-                // ==========================================
-                // MODIFIKASI: OTOMATIS KELUAR KEMBALI KE DASHBOARD
-                // ==========================================
-                selectedDspMatchId = ''; // Reset ID pertandingan aktif
+                selectedDspMatchId = ''; 
                 
                 const dspContent = document.getElementById('dspMainContent');
                 if (dspContent) {
-                    dspContent.classList.add('hidden'); // Sembunyikan form DSP
+                    dspContent.classList.add('hidden'); 
                 }
                 
                 const dspFormConfig = document.getElementById('dspFormConfig');
                 if (dspFormConfig) {
-                    dspFormConfig.classList.add('hidden'); // Sembunyikan tombol aksi atas
+                    dspFormConfig.classList.add('hidden'); 
                 }
 
-                // Pindah otomatis ke tab Home / Dashboard
                 changeTab('dashboard');
-                // ==========================================
 
             } catch(e) {
                 showToast('Gagal', 'Terjadi kesalahan saat mempublish.', 'error');
