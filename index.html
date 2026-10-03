@@ -1251,7 +1251,7 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxL7Z3-8VEbOVqY6ExkYn2QkKVc4hyoQgqF2eoFIsnxymJbYFmOMqqlPoyFQzPrru30/exec"; 
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby9qEfxgOsR6iYx7eVQAmj_8PDHPqBlEIq1zXmis-WZhgMf9kZdyLMDlpCDX27jNDxS/exec"; 
 
         let currentUserRole = 'Admin'; 
         let currentDashboardVenue = 'V01'; 
@@ -3224,6 +3224,9 @@
             match.awayJersey = document.getElementById('jerseyAwayVal').innerText;
 
             let lineup = { home: [], away: [] };
+            
+            // [MODIFIKASI] Array untuk menampung request kartu agar bisa ditunggu (await)
+            let cardUpdatePromises = [];
 
             ['home', 'away'].forEach(side => {
                 const rows = document.querySelectorAll(`.${side}-y-inp`);
@@ -3271,8 +3274,8 @@
                         playerObj.yellowCards = currYellow;
                         playerObj.suspended = banMatches;
 
-                        // Kirim data ke Google Apps Script (Update Status & Catat Riwayat)
-                        fetch(SCRIPT_URL, {
+                        // [MODIFIKASI] Push fetch ke dalam array promise
+                        let promise = fetch(SCRIPT_URL, {
                             method: 'POST',
                             mode: 'no-cors',
                             headers: { 'Content-Type': 'application/json' },
@@ -3281,7 +3284,7 @@
                                 playerId: playerObj.id,
                                 playerName: playerObj.nama,
                                 teamId: playerObj.teamId,
-                                matchNo: match.matchNo, // Diambil dari data match yang sedang diakses
+                                matchNo: match.matchNo,
                                 yellow: yellow,
                                 red: red,
                                 yellowCards: playerObj.yellowCards,
@@ -3289,6 +3292,8 @@
                                 keterangan: keteranganText
                             })
                         }).catch(err => console.error("Sync player error:", err));
+                        
+                        cardUpdatePromises.push(promise);
                     }
                 });
             });
@@ -3300,7 +3305,14 @@
             }
 
             try {
-                showToast('Menyimpan...', 'Mengirim data BAP & skor ke Google Sheets...', 'success');
+                showToast('Menyimpan...', 'Menyinkronkan Kartu & DSP ke Sheets...', 'success');
+                
+                // [MODIFIKASI] Tahan dan tunggu seluruh data kartu berhasil dikirim ke backend
+                if (cardUpdatePromises.length > 0) {
+                    await Promise.all(cardUpdatePromises);
+                }
+
+                // Lanjut eksekusi API utama (Save DSP)
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -3322,7 +3334,7 @@
                     })
                 });
                 refreshAllUI();
-                showToast('Berhasil', 'DSP & Status Sanksi Kartu Berhasil Disimpan ke Spreadsheet!', 'success');
+                showToast('Berhasil', 'DSP & Riwayat Kartu Berhasil Disimpan ke Sheets!', 'success');
             } catch(e) {
                 showToast('Gagal', 'Gagal menyinkronkan data ke Google Sheets.', 'error');
             }
