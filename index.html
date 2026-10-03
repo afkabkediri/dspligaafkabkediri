@@ -1251,7 +1251,7 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyIFsEjlu27hZqYT5KpYKlQceoGs0TlsNWIY4L3qod_llk3p4sgVG3iridYUBSLsN_K/exec"; 
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxL7Z3-8VEbOVqY6ExkYn2QkKVc4hyoQgqF2eoFIsnxymJbYFmOMqqlPoyFQzPrru30/exec"; 
 
         let currentUserRole = 'Admin'; 
         let currentDashboardVenue = 'V01'; 
@@ -1384,14 +1384,24 @@
         function formatDisplayTime(rawTime) {
             if (!rawTime) return '-';
             let timeStr = String(rawTime);
+            
+            // Jika data dari Google Sheets berupa format ISO (mengandung 'T')
             if (timeStr.includes('T')) {
                 const dateObj = new Date(timeStr);
                 if (!isNaN(dateObj.getTime())) {
-                    const hours = String(dateObj.getUTCHours()).padStart(2, '0');
-                    const minutes = String(dateObj.getUTCMinutes()).padStart(2, '0');
-                    timeStr = `${hours}:${minutes}`;
+                    // Memastikan waktu dikonversi akurat ke zona waktu WIB (Asia/Jakarta)
+                    return dateObj.toLocaleTimeString('id-ID', {
+                        timeZone: 'Asia/Jakarta',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    }) + ' WIB';
                 }
             }
+            
+            // Jika format berupa string biasa (misal "09.00" atau "9:00"), ubah titik menjadi titik dua
+            timeStr = timeStr.replace('.', ':');
+            
             if (!timeStr.toLowerCase().includes('wib')) {
                 timeStr += ' WIB';
             }
@@ -3231,22 +3241,37 @@
 
                     let playerObj = appData.players.find(p => String(p.id).trim() === String(pid).trim());
                     if(playerObj && (yellow > 0 || red > 0)) {
-                        let currYellow = parseInt(playerObj.yellowCards || 0) + yellow;
+                        let currYellow = parseInt(playerObj.yellowCards || 0);
                         let banMatches = parseInt(playerObj.suspended || 0);
-                        
-                        if(banMatches > 0) banMatches--;
+                        let keteranganText = "";
 
-                        if(yellow >= 2 || currYellow >= 2) {
-                            banMatches = 1; 
-                            currYellow = 0; 
-                        }
-                        if(red > 0) {
-                            banMatches = 2; 
+                        // ATURAN 2: Jika mendapat 2 Kartu Kuning (Merah Tidak Langsung) ATAU Kartu Merah Langsung
+                        if (red > 0) {
+                            banMatches += 2; // Suspend 2 Pertandingan Berikutnya
+                            keteranganText = "Kartu Merah Langsung (Suspend 2 Laga)";
+                        } else if (yellow === 2) {
+                            banMatches += 2; // Suspend 2 Pertandingan Berikutnya
+                            currYellow = 0;  // Reset akumulasi kuning karena sudah dikonversi jadi merah
+                            keteranganText = "2 Kartu Kuning dalam 1 Match (Suspend 2 Laga)";
+                        } 
+                        // ATURAN 1: Jika mendapat 1 Kartu Kuning
+                        else if (yellow === 1) {
+                            currYellow += 1;
+                            if (currYellow >= 2) { 
+                                // Kena akumulasi dari pertandingan sebelumnya
+                                banMatches += 1; // Suspend 1 Pertandingan Berikutnya
+                                currYellow = 0;  // Reset akumulasi setelah sanksi diberikan
+                                keteranganText = "Akumulasi 2 Kartu Kuning (Suspend 1 Laga)";
+                            } else {
+                                keteranganText = "1 Kartu Kuning (Aman)";
+                            }
                         }
 
+                        // Update status lokal
                         playerObj.yellowCards = currYellow;
                         playerObj.suspended = banMatches;
 
+                        // Kirim data ke Google Apps Script (Update Status & Catat Riwayat)
                         fetch(SCRIPT_URL, {
                             method: 'POST',
                             mode: 'no-cors',
@@ -3254,8 +3279,14 @@
                             body: JSON.stringify({
                                 type: 'update_player_status',
                                 playerId: playerObj.id,
+                                playerName: playerObj.nama,
+                                teamId: playerObj.teamId,
+                                matchNo: match.matchNo, // Diambil dari data match yang sedang diakses
+                                yellow: yellow,
+                                red: red,
                                 yellowCards: playerObj.yellowCards,
-                                suspended: playerObj.suspended
+                                suspended: playerObj.suspended,
+                                keterangan: keteranganText
                             })
                         }).catch(err => console.error("Sync player error:", err));
                     }
